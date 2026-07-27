@@ -50,7 +50,7 @@ const DEFAULT_BLOCKED_DATES: BlockedDate[] = [
     id: "blk-2",
     date: "2026-08-20",
     resourceId: "espaco-maker",
-    reason: "Manutenção Preventiva das Impressoras 3D",
+    reason: "Manutenção Preventiva dos Equipamentos",
     createdBy: "Coordenador Maker",
   },
 ];
@@ -111,7 +111,11 @@ function readDB(): DBData {
       return initialData;
     }
     const content = fs.readFileSync(DB_FILE, "utf-8");
-    return JSON.parse(content);
+    const parsed = JSON.parse(content);
+    return {
+      reservations: Array.isArray(parsed.reservations) ? parsed.reservations : [],
+      blockedDates: Array.isArray(parsed.blockedDates) ? parsed.blockedDates : [],
+    };
   } catch (err) {
     console.error("Error reading database file, returning default data:", err);
     return {
@@ -136,75 +140,118 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // CORS and body parser
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
+
+  app.use(express.json({ limit: "10mb" }));
+  app.use(express.urlencoded({ extended: true }));
 
   // GET All Data
   app.get("/api/data", (req, res) => {
-    const data = readDB();
-    res.json(data);
+    try {
+      const data = readDB();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ error: "Erro ao ler banco de dados." });
+    }
   });
 
   // POST Add Reservations
   app.post("/api/reservations", (req, res) => {
-    const newItems: Reservation[] = Array.isArray(req.body)
-      ? req.body
-      : [req.body];
-
-    const db = readDB();
-
-    // Check for conflicts
-    for (const item of newItems) {
-      const conflict = db.reservations.some(
-        (r) =>
-          r.resourceId === item.resourceId &&
-          r.date === item.date &&
-          r.periodId === item.periodId
-      );
-      if (conflict) {
-        return res.status(409).json({
-          error:
-            "Um ou mais horários selecionados já estão reservados por outro professor.",
-        });
+    try {
+      const body = req.body;
+      if (!body) {
+        return res.status(400).json({ error: "Dados da reserva ausentes." });
       }
-    }
 
-    db.reservations.push(...newItems);
-    writeDB(db);
-    res.json(db);
+      const newItems: Reservation[] = Array.isArray(body) ? body : [body];
+
+      if (newItems.length === 0) {
+        return res.status(400).json({ error: "Nenhuma reserva fornecida." });
+      }
+
+      const db = readDB();
+
+      // Check for conflicts
+      for (const item of newItems) {
+        const conflict = db.reservations.some(
+          (r) =>
+            r.resourceId === item.resourceId &&
+            r.date === item.date &&
+            r.periodId === item.periodId &&
+            r.id !== item.id
+        );
+        if (conflict) {
+          return res.status(409).json({
+            error:
+              "Um ou mais horários selecionados já estão reservados para este recurso por outro professor.",
+          });
+        }
+      }
+
+      db.reservations.push(...newItems);
+      writeDB(db);
+      res.json(db);
+    } catch (err: any) {
+      console.error("Error in POST /api/reservations:", err);
+      res.status(500).json({ error: "Erro interno ao registrar reserva." });
+    }
   });
 
   // DELETE Reservations
   app.delete("/api/reservations", (req, res) => {
-    const { ids } = req.body as { ids: string[] };
-    if (!ids || !Array.isArray(ids)) {
-      return res.status(400).json({ error: "Lista de IDs inválida." });
-    }
+    try {
+      const { ids } = req.body as { ids: string[] };
+      if (!ids || !Array.isArray(ids)) {
+        return res.status(400).json({ error: "Lista de IDs inválida." });
+      }
 
-    const db = readDB();
-    db.reservations = db.reservations.filter((r) => !ids.includes(r.id));
-    writeDB(db);
-    res.json(db);
+      const db = readDB();
+      db.reservations = db.reservations.filter((r) => !ids.includes(r.id));
+      writeDB(db);
+      res.json(db);
+    } catch (err: any) {
+      console.error("Error in DELETE /api/reservations:", err);
+      res.status(500).json({ error: "Erro interno ao excluir reserva." });
+    }
   });
 
   // POST Add Blocked Dates
   app.post("/api/blocked-dates", (req, res) => {
-    const newBlocks: BlockedDate[] = Array.isArray(req.body)
-      ? req.body
-      : [req.body];
+    try {
+      const body = req.body;
+      const newBlocks: BlockedDate[] = Array.isArray(body) ? body : [body];
 
-    const db = readDB();
-    db.blockedDates.push(...newBlocks);
-    writeDB(db);
-    res.json(db);
+      const db = readDB();
+      db.blockedDates.push(...newBlocks);
+      writeDB(db);
+      res.json(db);
+    } catch (err: any) {
+      console.error("Error in POST /api/blocked-dates:", err);
+      res.status(500).json({ error: "Erro interno ao bloquear datas." });
+    }
   });
 
   // DELETE Blocked Date by ID
   app.delete("/api/blocked-dates/:id", (req, res) => {
-    const { id } = req.params;
-    const db = readDB();
-    db.blockedDates = db.blockedDates.filter((b) => b.id !== id);
-    writeDB(db);
-    res.json(db);
+    try {
+      const { id } = req.params;
+      const db = readDB();
+      db.blockedDates = db.blockedDates.filter((b) => b.id !== id);
+      writeDB(db);
+      res.json(db);
+    } catch (err: any) {
+      console.error("Error in DELETE /api/blocked-dates:", err);
+      res.status(500).json({ error: "Erro interno ao desbloquear data." });
+    }
   });
 
   // Vite middleware or production static files

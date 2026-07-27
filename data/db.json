@@ -1,0 +1,72 @@
+{
+  "reservations": [
+    {
+      "id": "res-101",
+      "resourceId": "chromebook-carrinho-1",
+      "teacherName": "Prof. Carlos Eduardo",
+      "subject": "Matemática",
+      "grade": "8º Ano B",
+      "notes": "Uso do Khan Academy",
+      "date": "2026-07-27",
+      "shift": "MANHA",
+      "periodId": "M1",
+      "periodLabel": "1ª Aula (07:00 - 07:50)",
+      "createdAt": "2026-07-27T20:35:52.214Z"
+    },
+    {
+      "id": "res-102",
+      "resourceId": "chromebook-carrinho-2",
+      "teacherName": "Prof. Ricardo Santos",
+      "subject": "Ciências",
+      "grade": "9º Ano A",
+      "notes": "Pesquisa sobre ecossistemas",
+      "date": "2026-07-27",
+      "shift": "MANHA",
+      "periodId": "M2",
+      "periodLabel": "2ª Aula (07:50 - 08:40)",
+      "createdAt": "2026-07-27T20:35:52.214Z"
+    },
+    {
+      "id": "res-103",
+      "resourceId": "sala-google",
+      "teacherName": "Profª Ana Paula",
+      "subject": "Geografia",
+      "grade": "6º Ano A",
+      "notes": "Apresentação no Google Apresentações",
+      "date": "2026-07-27",
+      "shift": "TARDE",
+      "periodId": "T1",
+      "periodLabel": "1ª Aula (12:30 - 13:20)",
+      "createdAt": "2026-07-27T20:35:52.214Z"
+    },
+    {
+      "id": "test-1",
+      "resourceId": "sala-google",
+      "teacherName": "Teste",
+      "subject": "Teste",
+      "grade": "6º Ano A",
+      "notes": "Nota",
+      "date": "2026-07-28",
+      "shift": "MANHA",
+      "periodId": "M1",
+      "periodLabel": "1ª Aula",
+      "createdAt": "2026-07-27T20:56:44Z"
+    }
+  ],
+  "blockedDates": [
+    {
+      "id": "blk-1",
+      "date": "2026-08-15",
+      "resourceId": null,
+      "reason": "Feriado Municipal - Aniversário da Cidade",
+      "createdBy": "Direção Escolar"
+    },
+    {
+      "id": "blk-2",
+      "date": "2026-08-20",
+      "resourceId": "espaco-maker",
+      "reason": "Manutenção Preventiva das Impressoras 3D",
+      "createdBy": "Coordenador Maker"
+    }
+  ]
+}
