@@ -21,6 +21,7 @@ import {
   Square,
   CalendarDays
 } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 interface Resource {
   id: string;
@@ -1494,6 +1495,7 @@ export default function App() {
         </div>
       )}
 
+      <Analytics />
     </div>
   );
 }
