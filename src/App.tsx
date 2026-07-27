@@ -308,7 +308,9 @@ export default function App() {
   // Sincronizar em tempo real com o servidor de reservas (resiliente)
   const fetchServerData = async () => {
     try {
-      const res = await fetch('/api/data');
+      const res = await fetch(`/api/data?t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (res.ok) {
         const data = await parseApiResponse(res);
         if (data && Array.isArray(data.reservations)) {
@@ -328,7 +330,7 @@ export default function App() {
 
   useEffect(() => {
     fetchServerData();
-    const interval = setInterval(fetchServerData, 3000);
+    const interval = setInterval(fetchServerData, 2000);
 
     let channel: BroadcastChannel | null = null;
     if (typeof BroadcastChannel !== 'undefined') {
@@ -1296,6 +1298,76 @@ export default function App() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* Lista Global de Reservas Registradas no Servidor */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-blue-600" />
+                    Lista Geral de Reservas no Servidor ({reservations.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Todas as reservas gravadas de maneira centralizada e sincronizada entre docentes.
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-bold text-emerald-800">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Sincronizado em Tempo Real
+                </div>
+              </div>
+
+              {reservations.length === 0 ? (
+                <p className="text-xs text-slate-400 italic py-6 text-center">Nenhuma reserva cadastrada até o momento.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th className="p-3 rounded-l-xl">Data</th>
+                        <th className="p-3">Recurso / Espaço</th>
+                        <th className="p-3">Aula / Período</th>
+                        <th className="p-3">Docente</th>
+                        <th className="p-3">Disciplina & Turma</th>
+                        <th className="p-3 rounded-r-xl">Observações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                      {[...reservations]
+                        .sort((a, b) => b.date.localeCompare(a.date) || a.periodId.localeCompare(b.periodId))
+                        .map((r) => {
+                          const resObj = RESOURCES.find(res => res.id === r.resourceId);
+                          return (
+                            <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
+                                {r.date.split('-').reverse().join('/')}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${resObj?.badgeColor || 'bg-slate-100'}`}>
+                                  {resObj?.name || r.resourceId}
+                                </span>
+                              </td>
+                              <td className="p-3 font-semibold text-slate-800 whitespace-nowrap">
+                                {r.periodLabel} ({r.shift === 'MANHA' ? 'Manhã' : 'Tarde'})
+                              </td>
+                              <td className="p-3 font-bold text-slate-900 whitespace-nowrap">
+                                {r.teacherName}
+                              </td>
+                              <td className="p-3 whitespace-nowrap">
+                                <span className="font-semibold text-slate-800">{r.subject}</span>
+                                <span className="text-slate-400 text-[11px] ml-1">({r.grade})</span>
+                              </td>
+                              <td className="p-3 text-slate-500 max-w-xs truncate">
+                                {r.notes || '-'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}

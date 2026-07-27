@@ -145,6 +145,14 @@ async function startServer() {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    
+    // Forçar desativação de cache em todas as rotas de API para sincronização em tempo real
+    if (req.originalUrl.startsWith("/api") || req.url.startsWith("/api")) {
+      res.header("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+      res.header("Pragma", "no-cache");
+      res.header("Expires", "0");
+    }
+
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
