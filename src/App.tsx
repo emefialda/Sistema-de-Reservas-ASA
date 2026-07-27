@@ -289,21 +289,21 @@ export default function App() {
     return { error: `Comunicação com o servidor indisponível (Status ${res.status})` };
   };
 
-  // Sincronizar em tempo real com o servidor de reservas
+  // Sincronizar em tempo real com o servidor de reservas (resiliente)
   const fetchServerData = async () => {
     try {
       const res = await fetch('/api/data');
       if (res.ok) {
         const data = await parseApiResponse(res);
-        if (data && Array.isArray(data.reservations)) {
+        if (data && Array.isArray(data.reservations) && data.reservations.length > 0) {
           setReservations(data.reservations);
         }
-        if (data && Array.isArray(data.blockedDates)) {
+        if (data && Array.isArray(data.blockedDates) && data.blockedDates.length > 0) {
           setBlockedDates(data.blockedDates);
         }
       }
     } catch (e) {
-      // Falha silenciosa de rede no polling para não atrapalhar a experiência
+      // Falha silenciosa para não atrapalhar o uso do aplicativo
     }
   };
 
@@ -452,43 +452,39 @@ export default function App() {
         body: JSON.stringify(newReservations)
       });
 
-      const data = await parseApiResponse(res);
-
-      if (!res.ok) {
+      if (res.status === 409) {
+        const data = await parseApiResponse(res);
         setFeedback({
           type: 'error',
-          message: data.error || 'Não foi possível registrar a reserva no servidor.'
+          message: data.error || 'Um ou mais horários selecionados já estão reservados por outro professor.'
         });
-        fetchServerData();
         return;
       }
 
-      if (data && Array.isArray(data.reservations)) {
-        setReservations(data.reservations);
+      if (res.ok) {
+        const data = await parseApiResponse(res);
+        if (data && Array.isArray(data.reservations)) {
+          setReservations(data.reservations);
+        } else {
+          setReservations(prev => [...prev, ...newReservations]);
+        }
+        if (data && Array.isArray(data.blockedDates)) {
+          setBlockedDates(data.blockedDates);
+        }
       } else {
         setReservations(prev => [...prev, ...newReservations]);
       }
-      if (data && Array.isArray(data.blockedDates)) {
-        setBlockedDates(data.blockedDates);
-      }
-      setSelectedPeriods([]);
-      setSubject('');
-      setNotes('');
-      setFeedback({ 
-        type: 'success', 
-        message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
-      });
     } catch (e) {
-      console.error('Erro na requisição, salvando no estado local:', e);
       setReservations(prev => [...prev, ...newReservations]);
-      setSelectedPeriods([]);
-      setSubject('');
-      setNotes('');
-      setFeedback({ 
-        type: 'success', 
-        message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
-      });
     }
+
+    setSelectedPeriods([]);
+    setSubject('');
+    setNotes('');
+    setFeedback({ 
+      type: 'success', 
+      message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
+    });
   };
 
   const handleToggleSelectReservation = (id: string) => {
