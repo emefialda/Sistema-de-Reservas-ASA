@@ -245,36 +245,31 @@ export default function App() {
   const [adminBlockResource, setAdminBlockResource] = useState('');
   const [adminBlockReason, setAdminBlockReason] = useState('');
 
-  // Datas bloqueadas pela gestão escolar com persistência
-  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>(() => {
-    try {
-      const saved = localStorage.getItem('alda_blocked_dates');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Erro ao ler datas bloqueadas:', e);
-    }
-    return DEFAULT_BLOCKED_DATES;
-  });
+  // Datas bloqueadas pela gestão escolar obtidas do servidor
+  const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
 
-  // Reservas com persistência
-  const [reservations, setReservations] = useState<Reservation[]>(() => {
-    try {
-      const saved = localStorage.getItem('alda_reservations');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {
-      console.error('Erro ao ler reservas:', e);
-    }
-    return DEFAULT_RESERVATIONS;
-  });
+  // Reservas obtidas do servidor
+  const [reservations, setReservations] = useState<Reservation[]>([]);
 
-  // Efeitos para sincronizar no localStorage
-  useEffect(() => {
-    localStorage.setItem('alda_reservations', JSON.stringify(reservations));
-  }, [reservations]);
+  // Carregar dados e sincronizar via polling em tempo real com o servidor
+  const fetchServerData = async () => {
+    try {
+      const res = await fetch('/api/data');
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+        setBlockedDates(data.blockedDates || []);
+      }
+    } catch (e) {
+      console.error('Erro ao conectar ao servidor:', e);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('alda_blocked_dates', JSON.stringify(blockedDates));
-  }, [blockedDates]);
+    fetchServerData();
+    const interval = setInterval(fetchServerData, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('alda_teacher_name', teacherName);
@@ -348,7 +343,7 @@ export default function App() {
     }
   };
 
-  const handleCreateReservation = (e: React.FormEvent) => {
+  const handleCreateReservation = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeedback({ type: '', message: '' });
 
@@ -372,7 +367,7 @@ export default function App() {
       return;
     }
 
-    // Trava de conflito em tempo de submissão
+    // Trava de conflito local prévia
     const hasConflict = selectedPeriods.some(pId => occupiedPeriodIds.includes(pId));
     if (hasConflict) {
       setFeedback({ 
@@ -408,14 +403,37 @@ export default function App() {
       };
     });
 
-    setReservations(prev => [...prev, ...newReservations]);
-    setSelectedPeriods([]);
-    setSubject('');
-    setNotes('');
-    setFeedback({ 
-      type: 'success', 
-      message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
-    });
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newReservations)
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        setFeedback({
+          type: 'error',
+          message: errData.error || 'Erro ao realizar reserva no servidor.'
+        });
+        fetchServerData();
+        return;
+      }
+
+      const data = await res.json();
+      setReservations(data.reservations || []);
+      setBlockedDates(data.blockedDates || []);
+      setSelectedPeriods([]);
+      setSubject('');
+      setNotes('');
+      setFeedback({ 
+        type: 'success', 
+        message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
+      });
+    } catch (e) {
+      console.error('Erro na requisição:', e);
+      setFeedback({ type: 'error', message: 'Erro de conexão com o servidor de reservas.' });
+    }
   };
 
   const handleToggleSelectReservation = (id: string) => {
@@ -434,21 +452,47 @@ export default function App() {
     }
   };
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedReservationIds.length === 0) return;
     
-    setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
-    setFeedback({ 
-      type: 'info', 
-      message: `${selectedReservationIds.length} reserva(s) excluída(s) com sucesso.` 
-    });
-    setSelectedReservationIds([]);
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: selectedReservationIds })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+        setBlockedDates(data.blockedDates || []);
+        setFeedback({ 
+          type: 'info', 
+          message: `${selectedReservationIds.length} reserva(s) excluída(s) com sucesso.` 
+        });
+        setSelectedReservationIds([]);
+      }
+    } catch (e) {
+      console.error('Erro ao excluir reservas em lote:', e);
+    }
   };
 
-  const handleSingleDelete = (id: string) => {
-    setReservations(prev => prev.filter(r => r.id !== id));
-    setSelectedReservationIds(prev => prev.filter(item => item !== id));
-    setFeedback({ type: 'info', message: 'Reserva removida do sistema.' });
+  const handleSingleDelete = async (id: string) => {
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+        setBlockedDates(data.blockedDates || []);
+        setSelectedReservationIds(prev => prev.filter(item => item !== id));
+        setFeedback({ type: 'info', message: 'Reserva removida do sistema.' });
+      }
+    } catch (e) {
+      console.error('Erro ao excluir reserva:', e);
+    }
   };
 
   // Adicionar data individual à lista de datas para bloqueio
@@ -463,7 +507,7 @@ export default function App() {
     setSelectedDatesToBlock(selectedDatesToBlock.filter(item => item !== d));
   };
 
-  const handleAddBlockDates = (e: React.FormEvent) => {
+  const handleAddBlockDates = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adminBlockReason.trim()) {
       setFeedback({ type: 'error', message: 'Informe a justificativa do bloqueio.' });
@@ -508,19 +552,42 @@ export default function App() {
       createdBy: 'Direção Escolar'
     }));
 
-    setBlockedDates(prev => [...prev, ...newBlocks]);
-    setAdminBlockReason('');
-    if (blockMode === 'MULTIPLE') setSelectedDatesToBlock([]);
-    
-    setFeedback({ 
-      type: 'success', 
-      message: `${datesToRegister.length} data(s) bloqueada(s) com sucesso na agenda!` 
-    });
+    try {
+      const res = await fetch('/api/blocked-dates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newBlocks)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+        setBlockedDates(data.blockedDates || []);
+        setAdminBlockReason('');
+        if (blockMode === 'MULTIPLE') setSelectedDatesToBlock([]);
+        setFeedback({ 
+          type: 'success', 
+          message: `${datesToRegister.length} data(s) bloqueada(s) com sucesso na agenda!` 
+        });
+      }
+    } catch (e) {
+      console.error('Erro ao bloquear datas:', e);
+    }
   };
 
-  const handleRemoveBlockDate = (id: string) => {
-    setBlockedDates(prev => prev.filter(b => b.id !== id));
-    setFeedback({ type: 'info', message: 'Desbloqueio efetuado com sucesso.' });
+  const handleRemoveBlockDate = async (id: string) => {
+    try {
+      const res = await fetch(`/api/blocked-dates/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setReservations(data.reservations || []);
+        setBlockedDates(data.blockedDates || []);
+        setFeedback({ type: 'info', message: 'Desbloqueio efetuado com sucesso.' });
+      }
+    } catch (e) {
+      console.error('Erro ao desfaire bloqueio:', e);
+    }
   };
 
   return (
