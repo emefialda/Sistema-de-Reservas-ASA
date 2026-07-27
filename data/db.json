@@ -38,6 +38,19 @@
       "periodId": "T1",
       "periodLabel": "1ª Aula (12:30 - 13:20)",
       "createdAt": "2026-07-27T20:35:52.214Z"
+    },
+    {
+      "id": "res-sync-ok-1",
+      "resourceId": "sala-google",
+      "teacherName": "Prof. Maria",
+      "subject": "História",
+      "grade": "7º Ano B",
+      "notes": "Teste de Sincronização Multi-Aba",
+      "date": "2026-08-01",
+      "shift": "MANHA",
+      "periodId": "M1",
+      "periodLabel": "1ª Aula",
+      "createdAt": "2026-07-27T21:50:00Z"
     }
   ],
   "blockedDates": [

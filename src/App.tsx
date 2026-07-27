@@ -245,6 +245,9 @@ export default function App() {
   const [adminBlockResource, setAdminBlockResource] = useState('');
   const [adminBlockReason, setAdminBlockReason] = useState('');
 
+  // Estado de conexão do servidor
+  const [isServerOnline, setIsServerOnline] = useState<boolean>(true);
+
   // Datas bloqueadas com persistência híbrida (servidor + localStorage)
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>(() => {
     try {
@@ -289,6 +292,19 @@ export default function App() {
     return { error: `Comunicação com o servidor indisponível (Status ${res.status})` };
   };
 
+  // Notificar outras abas do navegador via BroadcastChannel
+  const notifyOtherTabs = () => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const channel = new BroadcastChannel('alda_school_sync');
+        channel.postMessage({ type: 'REFRESH' });
+        channel.close();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  };
+
   // Sincronizar em tempo real com o servidor de reservas (resiliente)
   const fetchServerData = async () => {
     try {
@@ -301,16 +317,41 @@ export default function App() {
         if (data && Array.isArray(data.blockedDates)) {
           setBlockedDates(data.blockedDates);
         }
+        setIsServerOnline(true);
+      } else {
+        setIsServerOnline(false);
       }
     } catch (e) {
-      // Falha silenciosa para não atrapalhar o uso do aplicativo
+      setIsServerOnline(false);
     }
   };
 
   useEffect(() => {
     fetchServerData();
-    const interval = setInterval(fetchServerData, 4000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchServerData, 3000);
+
+    let channel: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      channel = new BroadcastChannel('alda_school_sync');
+      channel.onmessage = (event) => {
+        if (event.data?.type === 'REFRESH') {
+          fetchServerData();
+        }
+      };
+    }
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'alda_reservations' || e.key === 'alda_blocked_dates') {
+        fetchServerData();
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      clearInterval(interval);
+      if (channel) channel.close();
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -458,6 +499,7 @@ export default function App() {
           type: 'error',
           message: data.error || 'Um ou mais horários selecionados já estão reservados por outro professor.'
         });
+        await fetchServerData();
         return;
       }
 
@@ -471,20 +513,29 @@ export default function App() {
         if (data && Array.isArray(data.blockedDates)) {
           setBlockedDates(data.blockedDates);
         }
+        setIsServerOnline(true);
+        notifyOtherTabs();
+        setSelectedPeriods([]);
+        setSubject('');
+        setNotes('');
+        setFeedback({ 
+          type: 'success', 
+          message: `Reserva efetuada e sincronizada para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
+        });
       } else {
-        setReservations(prev => [...prev, ...newReservations]);
+        setIsServerOnline(false);
+        setFeedback({
+          type: 'error',
+          message: 'Não foi possível salvar a reserva no servidor. Tente novamente.'
+        });
       }
     } catch (e) {
-      setReservations(prev => [...prev, ...newReservations]);
+      setIsServerOnline(false);
+      setFeedback({
+        type: 'error',
+        message: 'Falha de conexão com o servidor. A reserva não pôde ser registrada.'
+      });
     }
-
-    setSelectedPeriods([]);
-    setSubject('');
-    setNotes('');
-    setFeedback({ 
-      type: 'success', 
-      message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
-    });
   };
 
   const handleToggleSelectReservation = (id: string) => {
@@ -519,11 +570,13 @@ export default function App() {
         } else {
           setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
         }
+        setIsServerOnline(true);
+        notifyOtherTabs();
       } else {
-        setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
+        setIsServerOnline(false);
       }
     } catch (e) {
-      setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
+      setIsServerOnline(false);
     }
     setFeedback({ 
       type: 'info', 
@@ -546,11 +599,13 @@ export default function App() {
         } else {
           setReservations(prev => prev.filter(r => r.id !== id));
         }
+        setIsServerOnline(true);
+        notifyOtherTabs();
       } else {
-        setReservations(prev => prev.filter(r => r.id !== id));
+        setIsServerOnline(false);
       }
     } catch (e) {
-      setReservations(prev => prev.filter(r => r.id !== id));
+      setIsServerOnline(false);
     }
     setSelectedReservationIds(prev => prev.filter(item => item !== id));
     setFeedback({ type: 'info', message: 'Reserva removida do sistema.' });
@@ -626,12 +681,13 @@ export default function App() {
         } else {
           setBlockedDates(prev => [...prev, ...newBlocks]);
         }
+        setIsServerOnline(true);
+        notifyOtherTabs();
       } else {
-        setBlockedDates(prev => [...prev, ...newBlocks]);
+        setIsServerOnline(false);
       }
     } catch (e) {
-      console.error('Erro ao bloquear datas, salvando localmente:', e);
-      setBlockedDates(prev => [...prev, ...newBlocks]);
+      setIsServerOnline(false);
     }
     setAdminBlockReason('');
     if (blockMode === 'MULTIPLE') setSelectedDatesToBlock([]);
@@ -655,11 +711,13 @@ export default function App() {
         } else {
           setBlockedDates(prev => prev.filter(b => b.id !== id));
         }
+        setIsServerOnline(true);
+        notifyOtherTabs();
       } else {
-        setBlockedDates(prev => prev.filter(b => b.id !== id));
+        setIsServerOnline(false);
       }
     } catch (e) {
-      setBlockedDates(prev => prev.filter(b => b.id !== id));
+      setIsServerOnline(false);
     }
     setFeedback({ type: 'info', message: 'Desbloqueio efetuado com sucesso.' });
   };
@@ -683,9 +741,15 @@ export default function App() {
                 />
               </div>
               <div>
-                <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">
-                  Sistema Integrado de Agendamento
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-semibold tracking-wider text-amber-400 uppercase">
+                    Sistema Integrado de Agendamento
+                  </span>
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-slate-800/90 border border-slate-700/80 rounded-full text-[11px] font-medium text-slate-200">
+                    <span className={`w-2 h-2 rounded-full ${isServerOnline ? 'bg-emerald-400 animate-pulse' : 'bg-amber-500'}`} />
+                    <span>{isServerOnline ? 'Servidor Sincronizado' : 'Modo Offline (Local)'}</span>
+                  </div>
+                </div>
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   E.M.E.F.I Profª Alda de Souza Araújo
                 </h1>
