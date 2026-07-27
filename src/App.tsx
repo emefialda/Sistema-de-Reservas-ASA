@@ -90,9 +90,9 @@ const RESOURCES: Resource[] = [
   },
   {
     id: 'sala-google',
-    name: 'Sala Google Innovate',
+    name: 'Sala Google',
     category: 'SALA_GOOGLE',
-    description: 'Ambiente climatizado, projetor interativo e lousa digital.',
+    description: 'Espaço com Computadores de mesa e Lousa Digital',
     capacity: '35 Alunos',
     icon: Video,
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-300',
@@ -102,9 +102,9 @@ const RESOURCES: Resource[] = [
   },
   {
     id: 'espaco-maker',
-    name: 'Espaço Maker & Robótica',
+    name: 'Espaço Maker',
     category: 'ESPACO_MAKER',
-    description: 'Bancadas de trabalho, impressora 3D, kits de robótica e ferramentas.',
+    description: 'Bancadas de trabalho, laboratório de ciências, kits de robótica e ferramentas.',
     capacity: '30 Alunos',
     icon: Hammer,
     badgeColor: 'bg-purple-100 text-purple-800 border-purple-300',
@@ -359,6 +359,11 @@ export default function App() {
 
     if (!subject.trim() || !grade.trim()) {
       setFeedback({ type: 'error', message: 'Por favor, informe a disciplina e a turma.' });
+      return;
+    }
+
+    if (!notes.trim()) {
+      setFeedback({ type: 'error', message: 'Por favor, informe a atividade ou observação.' });
       return;
     }
 
@@ -831,18 +836,34 @@ export default function App() {
                           <option value="8º Ano A">8º Ano A (Manhã)</option>
                           <option value="8º Ano B">8º Ano B (Manhã)</option>
                           <option value="8º Ano C">8º Ano C (Manhã)</option>
+                          <option value="8º Ano D">8º Ano D (Manhã)</option>
+                          <option value="8º Ano E">8º Ano E (Manhã)</option>
+                          <option value="8º Ano F">8º Ano F (Manhã)</option>
+                          <option value="8º Ano G">8º Ano G (Manhã)</option>
                           <option value="9º Ano A">9º Ano A (Manhã)</option>
                           <option value="9º Ano B">9º Ano B (Manhã)</option>
                           <option value="9º Ano C">9º Ano C (Manhã)</option>
+                          <option value="9º Ano D">9º Ano D (Manhã)</option>
+                          <option value="9º Ano E">9º Ano E (Manhã)</option>
+                          <option value="9º Ano F">9º Ano F (Manhã)</option>
+                          <option value="9º Ano G">9º Ano G (Manhã)</option>
                         </>
                       ) : (
                         <>
                           <option value="6º Ano A">6º Ano A (Tarde)</option>
                           <option value="6º Ano B">6º Ano B (Tarde)</option>
                           <option value="6º Ano C">6º Ano C (Tarde)</option>
+                          <option value="6º Ano D">6º Ano D (Tarde)</option>
+                          <option value="6º Ano E">6º Ano E (Tarde)</option>
+                          <option value="6º Ano F">6º Ano F (Tarde)</option>
+                          <option value="6º Ano G">6º Ano G (Tarde)</option>
                           <option value="7º Ano A">7º Ano A (Tarde)</option>
                           <option value="7º Ano B">7º Ano B (Tarde)</option>
                           <option value="7º Ano C">7º Ano C (Tarde)</option>
+                          <option value="7º Ano D">7º Ano D (Tarde)</option>
+                          <option value="7º Ano E">7º Ano E (Tarde)</option>
+                          <option value="7º Ano F">7º Ano F (Tarde)</option>
+                          <option value="7º Ano G">7º Ano G (Tarde)</option>
                         </>
                       )}
                     </select>
@@ -851,11 +872,11 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Atividade ou Observação (Opcional)
+                    Atividade ou Observação <span className="text-red-500">*</span>
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="Descreva brevemente os softwares necessários ou objetivos da aula..."
+                    placeholder="Descreva obrigatoriamente a atividade, softwares necessários ou objetivos da aula..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     className="w-full px-3.5 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
