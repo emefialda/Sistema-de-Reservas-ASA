@@ -210,7 +210,7 @@ export default function App() {
 
   // Identificação do Professor
   const [teacherName, setTeacherName] = useState(() => {
-    return localStorage.getItem('alda_teacher_name') || 'Profª Maria Silva';
+    return localStorage.getItem('alda_teacher_name') || '';
   });
 
   // Estados de navegação
