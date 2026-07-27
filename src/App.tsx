@@ -295,10 +295,10 @@ export default function App() {
       const res = await fetch('/api/data');
       if (res.ok) {
         const data = await parseApiResponse(res);
-        if (data && Array.isArray(data.reservations) && data.reservations.length > 0) {
+        if (data && Array.isArray(data.reservations)) {
           setReservations(data.reservations);
         }
-        if (data && Array.isArray(data.blockedDates) && data.blockedDates.length > 0) {
+        if (data && Array.isArray(data.blockedDates)) {
           setBlockedDates(data.blockedDates);
         }
       }
