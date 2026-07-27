@@ -154,8 +154,11 @@ async function startServer() {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ extended: true }));
 
+  // API Router
+  const apiRouter = express.Router();
+
   // GET All Data
-  app.get("/api/data", (req, res) => {
+  apiRouter.get("/data", (req, res) => {
     try {
       const data = readDB();
       res.json(data);
@@ -165,7 +168,7 @@ async function startServer() {
   });
 
   // POST Add Reservations
-  app.post("/api/reservations", (req, res) => {
+  apiRouter.post("/reservations", (req, res) => {
     try {
       const body = req.body;
       if (!body) {
@@ -206,11 +209,11 @@ async function startServer() {
     }
   });
 
-  // DELETE Reservations
-  app.delete("/api/reservations", (req, res) => {
+  // POST or DELETE Reservations Delete
+  const handleReservationsDelete = (req: express.Request, res: express.Response) => {
     try {
-      const { ids } = req.body as { ids: string[] };
-      if (!ids || !Array.isArray(ids)) {
+      const ids = req.body?.ids || (req.body ? [req.body.id].filter(Boolean) : []);
+      if (!ids || !Array.isArray(ids) || ids.length === 0) {
         return res.status(400).json({ error: "Lista de IDs inválida." });
       }
 
@@ -219,13 +222,16 @@ async function startServer() {
       writeDB(db);
       res.json(db);
     } catch (err: any) {
-      console.error("Error in DELETE /api/reservations:", err);
+      console.error("Error in delete reservations:", err);
       res.status(500).json({ error: "Erro interno ao excluir reserva." });
     }
-  });
+  };
+
+  apiRouter.post("/reservations/delete", handleReservationsDelete);
+  apiRouter.delete("/reservations", handleReservationsDelete);
 
   // POST Add Blocked Dates
-  app.post("/api/blocked-dates", (req, res) => {
+  apiRouter.post("/blocked-dates", (req, res) => {
     try {
       const body = req.body;
       const newBlocks: BlockedDate[] = Array.isArray(body) ? body : [body];
@@ -240,18 +246,32 @@ async function startServer() {
     }
   });
 
-  // DELETE Blocked Date by ID
-  app.delete("/api/blocked-dates/:id", (req, res) => {
+  // POST or DELETE Blocked Date Delete
+  const handleBlockedDateDelete = (req: express.Request, res: express.Response) => {
     try {
-      const { id } = req.params;
+      const id = req.params.id || req.body?.id;
+      if (!id) {
+        return res.status(400).json({ error: "ID do bloqueio não fornecido." });
+      }
       const db = readDB();
       db.blockedDates = db.blockedDates.filter((b) => b.id !== id);
       writeDB(db);
       res.json(db);
     } catch (err: any) {
-      console.error("Error in DELETE /api/blocked-dates:", err);
+      console.error("Error in delete blocked-date:", err);
       res.status(500).json({ error: "Erro interno ao desbloquear data." });
     }
+  };
+
+  apiRouter.post("/blocked-dates/delete", handleBlockedDateDelete);
+  apiRouter.delete("/blocked-dates/:id", handleBlockedDateDelete);
+
+  // Mount API router
+  app.use("/api", apiRouter);
+
+  // Catch-all for /api/* to prevent falling through to Vite (which causes 405 Method Not Allowed)
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: "Endpoint de API não encontrado." });
   });
 
   // Vite middleware or production static files

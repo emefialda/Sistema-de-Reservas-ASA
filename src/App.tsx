@@ -508,8 +508,8 @@ export default function App() {
     if (selectedReservationIds.length === 0) return;
     
     try {
-      const res = await fetch('/api/reservations', {
-        method: 'DELETE',
+      const res = await fetch('/api/reservations/delete', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: selectedReservationIds })
       });
@@ -535,8 +535,8 @@ export default function App() {
 
   const handleSingleDelete = async (id: string) => {
     try {
-      const res = await fetch('/api/reservations', {
-        method: 'DELETE',
+      const res = await fetch('/api/reservations/delete', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [id] })
       });
@@ -644,8 +644,10 @@ export default function App() {
 
   const handleRemoveBlockDate = async (id: string) => {
     try {
-      const res = await fetch(`/api/blocked-dates/${id}`, {
-        method: 'DELETE'
+      const res = await fetch('/api/blocked-dates/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
       });
       if (res.ok) {
         const data = await parseApiResponse(res);
