@@ -1,0 +1,6 @@
+{
+  "name": "Sistema de Agendamento EMEFI Profª Alda de Souza Araújo",
+  "description": "Sistema integrado de agendamento de recursos pedagógicos (Chromebooks, Sala Google e Espaço Maker)",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
