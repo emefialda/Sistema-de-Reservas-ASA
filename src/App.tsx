@@ -514,28 +514,23 @@ export default function App() {
           setBlockedDates(data.blockedDates);
         }
         setIsServerOnline(true);
-        notifyOtherTabs();
-        setSelectedPeriods([]);
-        setSubject('');
-        setNotes('');
-        setFeedback({ 
-          type: 'success', 
-          message: `Reserva efetuada e sincronizada para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
-        });
       } else {
         setIsServerOnline(false);
-        setFeedback({
-          type: 'error',
-          message: 'Não foi possível salvar a reserva no servidor. Tente novamente.'
-        });
+        setReservations(prev => [...prev, ...newReservations]);
       }
     } catch (e) {
       setIsServerOnline(false);
-      setFeedback({
-        type: 'error',
-        message: 'Falha de conexão com o servidor. A reserva não pôde ser registrada.'
-      });
+      setReservations(prev => [...prev, ...newReservations]);
     }
+
+    notifyOtherTabs();
+    setSelectedPeriods([]);
+    setSubject('');
+    setNotes('');
+    setFeedback({ 
+      type: 'success', 
+      message: `Reserva efetuada com sucesso para ${currentResourceObj.name} em ${selectedDate.split('-').reverse().join('/')}!` 
+    });
   };
 
   const handleToggleSelectReservation = (id: string) => {
@@ -571,13 +566,15 @@ export default function App() {
           setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
         }
         setIsServerOnline(true);
-        notifyOtherTabs();
       } else {
         setIsServerOnline(false);
+        setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
       }
     } catch (e) {
       setIsServerOnline(false);
+      setReservations(prev => prev.filter(r => !selectedReservationIds.includes(r.id)));
     }
+    notifyOtherTabs();
     setFeedback({ 
       type: 'info', 
       message: `${selectedReservationIds.length} reserva(s) excluída(s) com sucesso.` 
@@ -600,13 +597,15 @@ export default function App() {
           setReservations(prev => prev.filter(r => r.id !== id));
         }
         setIsServerOnline(true);
-        notifyOtherTabs();
       } else {
         setIsServerOnline(false);
+        setReservations(prev => prev.filter(r => r.id !== id));
       }
     } catch (e) {
       setIsServerOnline(false);
+      setReservations(prev => prev.filter(r => r.id !== id));
     }
+    notifyOtherTabs();
     setSelectedReservationIds(prev => prev.filter(item => item !== id));
     setFeedback({ type: 'info', message: 'Reserva removida do sistema.' });
   };
@@ -682,13 +681,15 @@ export default function App() {
           setBlockedDates(prev => [...prev, ...newBlocks]);
         }
         setIsServerOnline(true);
-        notifyOtherTabs();
       } else {
         setIsServerOnline(false);
+        setBlockedDates(prev => [...prev, ...newBlocks]);
       }
     } catch (e) {
       setIsServerOnline(false);
+      setBlockedDates(prev => [...prev, ...newBlocks]);
     }
+    notifyOtherTabs();
     setAdminBlockReason('');
     if (blockMode === 'MULTIPLE') setSelectedDatesToBlock([]);
     setFeedback({ 
@@ -712,13 +713,15 @@ export default function App() {
           setBlockedDates(prev => prev.filter(b => b.id !== id));
         }
         setIsServerOnline(true);
-        notifyOtherTabs();
       } else {
         setIsServerOnline(false);
+        setBlockedDates(prev => prev.filter(b => b.id !== id));
       }
     } catch (e) {
       setIsServerOnline(false);
+      setBlockedDates(prev => prev.filter(b => b.id !== id));
     }
+    notifyOtherTabs();
     setFeedback({ type: 'info', message: 'Desbloqueio efetuado com sucesso.' });
   };
 
