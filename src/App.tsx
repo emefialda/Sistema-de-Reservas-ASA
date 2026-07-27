@@ -278,12 +278,15 @@ export default function App() {
 
   // Função auxiliar para interpretar respostas JSON ou texto com segurança
   const parseApiResponse = async (res: Response) => {
-    const contentType = res.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      return await res.json();
+    try {
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error('Erro ao interpretar resposta JSON:', e);
     }
-    const text = await res.text();
-    return { error: text || `Erro no servidor (Status ${res.status})` };
+    return { error: `Comunicação com o servidor indisponível (Status ${res.status})` };
   };
 
   // Sincronizar em tempo real com o servidor de reservas

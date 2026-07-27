@@ -167,6 +167,16 @@ async function startServer() {
     }
   });
 
+  // GET Reservations
+  apiRouter.get("/reservations", (req, res) => {
+    try {
+      const data = readDB();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ error: "Erro ao ler reservas." });
+    }
+  });
+
   // POST Add Reservations
   apiRouter.post("/reservations", (req, res) => {
     try {
@@ -229,6 +239,16 @@ async function startServer() {
 
   apiRouter.post("/reservations/delete", handleReservationsDelete);
   apiRouter.delete("/reservations", handleReservationsDelete);
+
+  // GET Blocked Dates
+  apiRouter.get("/blocked-dates", (req, res) => {
+    try {
+      const data = readDB();
+      res.json(data);
+    } catch (e: any) {
+      res.status(500).json({ error: "Erro ao ler datas bloqueadas." });
+    }
+  });
 
   // POST Add Blocked Dates
   apiRouter.post("/blocked-dates", (req, res) => {
