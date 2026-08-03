@@ -248,36 +248,37 @@ export default function App() {
   // Estado de conexão do servidor
   const [isServerOnline, setIsServerOnline] = useState<boolean>(true);
 
-  // Datas bloqueadas com persistência híbrida (servidor + localStorage)
+  // Datas bloqueadas com sincronização do servidor central
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>(() => {
     try {
       const saved = localStorage.getItem('alda_blocked_dates');
       if (saved) return JSON.parse(saved);
     } catch (e) {
-      console.error('Erro ao ler datas bloqueadas locais:', e);
+      console.error('Erro ao ler datas bloqueadas salvas:', e);
     }
     return DEFAULT_BLOCKED_DATES;
   });
 
-  // Reservas com persistência híbrida (servidor + localStorage)
+  // Reservas com sincronização do servidor central
   const [reservations, setReservations] = useState<Reservation[]>(() => {
     try {
       const saved = localStorage.getItem('alda_reservations');
       if (saved) return JSON.parse(saved);
     } catch (e) {
-      console.error('Erro ao ler reservas locais:', e);
+      console.error('Erro ao ler reservas salvas:', e);
     }
     return DEFAULT_RESERVATIONS;
   });
 
-  // Salvar no localStorage sempre que o estado mudar
-  useEffect(() => {
-    localStorage.setItem('alda_reservations', JSON.stringify(reservations));
-  }, [reservations]);
-
-  useEffect(() => {
-    localStorage.setItem('alda_blocked_dates', JSON.stringify(blockedDates));
-  }, [blockedDates]);
+  // Atualizar cache de backup local apenas quando o servidor responder com dados atualizados
+  const updateLocalBackup = (newReservations: Reservation[], newBlockedDates: BlockedDate[]) => {
+    try {
+      localStorage.setItem('alda_reservations', JSON.stringify(newReservations));
+      localStorage.setItem('alda_blocked_dates', JSON.stringify(newBlockedDates));
+    } catch (e) {
+      console.error('Erro ao atualizar backup local:', e);
+    }
+  };
 
   // Função auxiliar para interpretar respostas JSON ou texto com segurança
   const parseApiResponse = async (res: Response) => {
@@ -292,7 +293,7 @@ export default function App() {
     return { error: `Comunicação com o servidor indisponível (Status ${res.status})` };
   };
 
-  // Notificar outras abas do navegador via BroadcastChannel
+  // Notificar todas as abas/janelas via BroadcastChannel
   const notifyOtherTabs = () => {
     if (typeof BroadcastChannel !== 'undefined') {
       try {
@@ -305,7 +306,7 @@ export default function App() {
     }
   };
 
-  // Sincronizar em tempo real com o servidor de reservas (resiliente)
+  // Sincronizar em tempo real com o servidor de reservas (servidor como autoridade central)
   const fetchServerData = async () => {
     try {
       const res = await fetch(`/api/data?t=${Date.now()}`, {
@@ -313,13 +314,12 @@ export default function App() {
       });
       if (res.ok) {
         const data = await parseApiResponse(res);
-        if (data && Array.isArray(data.reservations)) {
+        if (data && Array.isArray(data.reservations) && Array.isArray(data.blockedDates)) {
           setReservations(data.reservations);
-        }
-        if (data && Array.isArray(data.blockedDates)) {
           setBlockedDates(data.blockedDates);
+          updateLocalBackup(data.reservations, data.blockedDates);
+          setIsServerOnline(true);
         }
-        setIsServerOnline(true);
       } else {
         setIsServerOnline(false);
       }

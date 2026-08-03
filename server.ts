@@ -97,40 +97,48 @@ const DEFAULT_RESERVATIONS: Reservation[] = [
   },
 ];
 
+let memoryDB: DBData | null = null;
+
 function readDB(): DBData {
-  try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
-    if (!fs.existsSync(DB_FILE)) {
-      const initialData: DBData = {
+  if (!memoryDB) {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      if (fs.existsSync(DB_FILE)) {
+        const content = fs.readFileSync(DB_FILE, "utf-8");
+        const parsed = JSON.parse(content);
+        memoryDB = {
+          reservations: Array.isArray(parsed.reservations) ? parsed.reservations : DEFAULT_RESERVATIONS,
+          blockedDates: Array.isArray(parsed.blockedDates) ? parsed.blockedDates : DEFAULT_BLOCKED_DATES,
+        };
+      } else {
+        memoryDB = {
+          reservations: DEFAULT_RESERVATIONS,
+          blockedDates: DEFAULT_BLOCKED_DATES,
+        };
+        writeDB(memoryDB);
+      }
+    } catch (err) {
+      console.error("Error initializing database from file:", err);
+      memoryDB = {
         reservations: DEFAULT_RESERVATIONS,
         blockedDates: DEFAULT_BLOCKED_DATES,
       };
-      fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), "utf-8");
-      return initialData;
     }
-    const content = fs.readFileSync(DB_FILE, "utf-8");
-    const parsed = JSON.parse(content);
-    return {
-      reservations: Array.isArray(parsed.reservations) ? parsed.reservations : [],
-      blockedDates: Array.isArray(parsed.blockedDates) ? parsed.blockedDates : [],
-    };
-  } catch (err) {
-    console.error("Error reading database file, returning default data:", err);
-    return {
-      reservations: DEFAULT_RESERVATIONS,
-      blockedDates: DEFAULT_BLOCKED_DATES,
-    };
   }
+  return memoryDB;
 }
 
 function writeDB(data: DBData) {
+  memoryDB = data;
   try {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
     }
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+    const tempPath = `${DB_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempPath, JSON.stringify(data, null, 2), "utf-8");
+    fs.renameSync(tempPath, DB_FILE);
   } catch (err) {
     console.error("Error writing to database file:", err);
   }
